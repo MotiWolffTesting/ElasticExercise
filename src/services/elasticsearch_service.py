@@ -15,8 +15,8 @@ class ElasticSearchService:
         "Initialize es client"
         self.client = Elasticsearch(
             hosts=[{
-                'host': settings.ELASTICSEARCH_HOST,
-                'port': settings.ELASTICSEARCH_PORT,
+                'host': settings.ELASTICSEARCH_HOST.replace('http://', '').replace('https://', ''),
+                'port': int(settings.ELASTICSEARCH_PORT),
                 'scheme': 'http'
             }],
             basic_auth=(settings.ELASTICSEARCH_USERNAME, settings.ELASTICSEARCH_PASSWORD),
@@ -35,30 +35,28 @@ class ElasticSearchService:
 
             # Define mapping
             mapping = {
-                "mapping": {
-                    "properties": {
-                        "text": {
-                            "type": "text",
-                            "analyzer": "standard"
-                        },
-                        "is_antisemitic": {
-                            "type": "boolean"
-                        },
-                        "created_at": {
-                            "type": "date",
-                            "format": "yyyy-MM-dd'T'HH:mm:ss||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd HH:mm:ssZ"
-                        },
-                        "sentiment": {
-                            "type": "text",
-                            "analyzer": "keyword"
-                        },
-                        "detected_weapons": {
-                            "type": "text",
-                            "analyzer": "keyword"
-                        },
-                        "weapon_count": {
-                            "type": "integer"
-                        }
+                "properties": {
+                    "text": {
+                        "type": "text",
+                        "analyzer": "standard"
+                    },
+                    "is_antisemitic": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "date",
+                        "format": "yyyy-MM-dd'T'HH:mm:ss||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd HH:mm:ssZ"
+                    },
+                    "sentiment": {
+                        "type": "text",
+                        "analyzer": "keyword"
+                    },
+                    "detected_weapons": {
+                        "type": "text",
+                        "analyzer": "keyword"
+                    },
+                    "weapon_count": {
+                        "type": "integer"
                     }
                 }
             }
@@ -81,11 +79,14 @@ class ElasticSearchService:
         try:
             actions = []
             for doc in doucments:
-                action = {
-                    "_index": self.index_name,
-                    "_source": doc.model_dump()
-                }
-                actions.append(action)
+                # Add index action
+                actions.append({
+                    "index": {
+                        "_index": self.index_name
+                    }
+                })
+                # Add document source
+                actions.append(doc.model_dump())
                 
             # Perform bulk indexing
             response = self.client.bulk(body=actions)

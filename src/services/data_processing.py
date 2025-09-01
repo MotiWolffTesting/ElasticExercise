@@ -53,10 +53,23 @@ class DataProcessingService:
                 try:
                     # Parse the data
                     text = item.get('text', '')
+                    
+                    # Handle date parsing
+                    date_str = item.get('created_at', '')
+                    try:
+                        if date_str:
+                            # Handle ISO format dates
+                            created_at = datetime.fromisoformat(date_str)
+                        else:
+                            created_at = datetime.now()
+                    except ValueError:
+                        logger.warning(f"Could not parse date: {date_str}, using current time")
+                        created_at = datetime.now()
+                    
                     doc = MaliciousDocument(
                         text=text,
                         is_antisemitic=item.get('is_antisemitic', False),
-                        created_at=datetime.fromisoformat(item.get('created_at', datetime.now().isoformat())),
+                        created_at=created_at,
                         sentiment=self.sentiment_service.analyze_sentiment(text)
                     )
                     documents.append(doc)
