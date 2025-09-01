@@ -21,10 +21,25 @@ class CSVConverterService:
             with open(csv_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
+                    # Parse the date string to ISO format
+                    date_str = row.get('CreateDate', '')
+                    try:
+                        # Handle the date format: "2020-02-15 17:57:21+00:00"
+                        if date_str:
+                            # Remove timezone info and parse
+                            date_str_clean = date_str.split('+')[0].strip()
+                            parsed_date = datetime.strptime(date_str_clean, "%Y-%m-%d %H:%M:%S")
+                            iso_date = parsed_date.isoformat()
+                        else:
+                            iso_date = datetime.now().isoformat()
+                    except ValueError:
+                        logger.warning(f"Could not parse date: {date_str}, using current time")
+                        iso_date = datetime.now().isoformat()
+                    
                     doc = {
                         "text": row.get('text', ''),
                         "is_antisemitic": row.get('Antisemitic', '0') in ['1', 'true', 'yes'],
-                        "created_at": row.get('CreateDate', datetime.now().isoformat())
+                        "created_at": iso_date
                     }
                     if doc['text']:
                         documents.append(doc)
