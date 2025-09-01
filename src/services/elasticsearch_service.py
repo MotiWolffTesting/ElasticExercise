@@ -83,12 +83,12 @@ class ElasticSearchService:
             for doc in doucments:
                 action = {
                     "_index": self.index_name,
-                    "_source": doc.dict()
+                    "_source": doc.model_dump()
                 }
                 actions.append(action)
                 
             # Perform bulk indexing
-            response = self.client.bulk(body=action)
+            response = self.client.bulk(body=actions)
             
             if response.get('errors'):
                 logger.error(f"Bulk indexing errors: {response['errors']}")
