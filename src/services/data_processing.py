@@ -3,6 +3,7 @@ import os
 from typing import List, Dict, Any
 from datetime import datetime
 import logging
+import aiofiles
 
 from ..models.document import MaliciousDocument
 from .elasticsearch_service import ElasticSearchService
@@ -42,10 +43,10 @@ class DataProcessingService:
             else:
                 logger.error(f"Unsupported file format: {file_extension}. Supported formats: .csv, .json")
                 return []
-            
-            # Load JSON data
-            with open(data_file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            # Load JSON data asynchronously
+            async with aiofiles.open(data_file_path, 'r', encoding='utf-8') as f:
+                file_content = await f.read()
+                data = json.loads(file_content)
                 
             documents = []
             for item in data:
