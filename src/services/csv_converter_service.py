@@ -3,13 +3,13 @@ import json
 import os
 from datetime import datetime
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 class CSVConverterService:
     """Service for converting csv to json"""
-    
-    def convert_csv_to_json(self, csv_path: str, json_path: str) -> str:
+    def convert_csv_to_json(self, csv_path: str, json_path: Optional[str] = None) -> str:
         "Converts csv files to json format"
         if json_path is None:
             json_path = os.path.splitext(csv_path)[0] + ".json"
