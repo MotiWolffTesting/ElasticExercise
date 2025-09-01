@@ -70,7 +70,9 @@ class WeaponsService:
             
             for keyword in self.weapon_keywords:
                 # Check for exact matches and partial matches
-                if keyword.lower() in tokens or keyword.lower() in text.lower():
+                if (keyword.lower() in tokens or 
+                    keyword.lower() in text.lower() or
+                    any(keyword.lower() in token.lower() for token in tokens)):
                     detected_weapons.append(keyword)
             
             return list(set(detected_weapons))  # Remove duplicates
