@@ -19,16 +19,5 @@ class Settings:
     
     # Data file Configuration
     DATA_FILE_PATH: str = os.getenv("DATA_FILE_PATH", "data/tweets_injected_3.csv")
-    
-    # Sentiment Analysis Configuration
-    SENTIMENT_POSITIVE_KEYWORDS: List[str] = [
-        "good", "great", "excellent", "wonderful", "amazing", "fantastic",
-        "positive", "happy", "joy", "love", "peace", "hope", "success"
-    ]
-    
-    SENTIMENT_NEGATIVE_KEYWORDS: List[str] = [
-        "bad", "terrible", "awful", "horrible", "hate", "anger", "rage",
-        "negative", "sad", "depressed", "fear", "threat", "danger", "violence"
-    ]
 
 settings = Settings()
