@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 import logging
 from ..services.elasticsearch_service import ElasticSearchService
 from ..services.data_processing import DataProcessingService
-from ..models.document import DocumentResponse, MaliciousDocument
+from ..models.document import DocumentResponse, MaliciousDocument, ProcessingStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -12,6 +12,42 @@ def get_services():
         "es_service": ElasticSearchService(),
         "processing_service": DataProcessingService()
     }
+
+@router.post("/process", response_model=ProcessingStatus)
+async def process_documents(services=Depends(get_services)):
+    """Process all documents from the data file and load them into ElasticSearch."""
+    try:
+        logger.info("Starting document processing pipeline...")
+        result = await services["processing_service"].process_all_documents()
+        
+        if result["status"] == "success":
+            return ProcessingStatus(
+                status="completed",
+                message=result["message"],
+                processed_count=result.get("final_count", 0),
+                total_count=result.get("initial_count", 0)
+            )
+        else:
+            return ProcessingStatus(
+                status="error",
+                message=result["message"],
+                processed_count=0,
+                total_count=0
+            )
+            
+    except Exception as e:
+        logger.error(f"Error processing documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/status", response_model=ProcessingStatus)
+async def get_processing_status(services=Depends(get_services)):
+    """Get the current processing status."""
+    try:
+        status = await services["processing_service"].get_processing_status()
+        return ProcessingStatus(**status)
+    except Exception as e:
+        logger.error(f"Error getting processing status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/antisemitic-with-weapons", response_model=DocumentResponse)
 async def get_antisemistic_with_weapons(services=Depends(get_services)):

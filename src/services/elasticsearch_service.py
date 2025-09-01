@@ -42,11 +42,11 @@ class ElasticSearchService:
                             "analyzer": "standard"
                         },
                         "is_antisemitic": {
-                            "type": "integer"
+                            "type": "boolean"
                         },
                         "created_at": {
                             "type": "date",
-                            "format": "yyyy-MM-dd'T'HH:mm:ss"
+                            "format": "yyyy-MM-dd'T'HH:mm:ss||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd HH:mm:ssZ"
                         },
                         "sentiment": {
                             "type": "text",

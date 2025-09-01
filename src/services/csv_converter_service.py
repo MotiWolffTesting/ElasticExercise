@@ -23,8 +23,8 @@ class CSVConverterService:
                 for row in reader:
                     doc = {
                         "text": row.get('text', ''),
-                        "is_antisemistic": row.get('is_antisemistic', 'false').lower() in ['true', '1', 'yes'],
-                        "created_at": row.get('created_at', datetime.now().isoformat())
+                        "is_antisemitic": row.get('Antisemitic', '0') in ['1', 'true', 'yes'],
+                        "created_at": row.get('CreateDate', datetime.now().isoformat())
                     }
                     if doc['text']:
                         documents.append(doc)
