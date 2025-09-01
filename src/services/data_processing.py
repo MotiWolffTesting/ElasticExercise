@@ -106,25 +106,47 @@ class DataProcessingService:
             if not success:
                 return {"status": "error", "message": "Failed to index documents"}
             
-            # Perform sentiment analysis
+            # Wait a moment for indexing to complete
+            import asyncio
+            await asyncio.sleep(2)
+            
+            # Perform sentiment analysis on all documents
             logger.info("Performing sentiment analysis...")
             all_docs = await self.es_service.get_all_documents()
+            logger.info(f"Processing sentiment for {len(all_docs)} documents...")
+            
             for doc_data in all_docs:
-                doc_id = doc_data.get('_id')
-                text = doc_data.get('text', '')
-                sentiment = self.sentiment_service.analyze_sentiment(text)
-                if doc_id is not None:
-                    await self.es_service.update_document_sentiment(doc_id, int(sentiment))
-                
-            # Detect weapons
+                try:
+                    doc_id = doc_data.get('_id')
+                    text = doc_data.get('text', '')
+                    if text and doc_id:
+                        sentiment = self.sentiment_service.analyze_sentiment(text)
+                        await self.es_service.update_document_sentiment(doc_id, sentiment)
+                except Exception as e:
+                    logger.error(f"Error updating sentiment for document {doc_id}: {e}")
+                    continue
+            
+            # Wait a moment for sentiment updates to complete
+            await asyncio.sleep(2)
+            
+            # Detect weapons in all documents
             logger.info("Detecting weapons keywords...")
             all_docs = await self.es_service.get_all_documents()
+            logger.info(f"Processing weapons for {len(all_docs)} documents...")
+            
             for doc_data in all_docs:
-                doc_id = doc_data.get('_id')
-                text = doc_data.get('text', '')
-                weapons = self.weapon_service.detect_weapons(text)
-                if doc_id is not None:
-                    await self.es_service.update_document_weapons(doc_id, weapons)
+                try:
+                    doc_id = doc_data.get('_id')
+                    text = doc_data.get('text', '')
+                    if text and doc_id:
+                        weapons = self.weapon_service.detect_weapons(text)
+                        await self.es_service.update_document_weapons(doc_id, weapons)
+                except Exception as e:
+                    logger.error(f"Error updating weapons for document {doc_id}: {e}")
+                    continue
+            
+            # Wait a moment for weapon updates to complete
+            await asyncio.sleep(2)
             
             # Delete irrelevant documents
             logger.info("Deleting irrelevant documents...")
@@ -132,6 +154,8 @@ class DataProcessingService:
             
             # Get final statistics
             final_count = await self.es_service.get_document_count()
+            
+            logger.info(f"Processing completed. Initial: {len(documents)}, Final: {final_count}, Deleted: {deleted_count}")
             
             return {
                 "status": "success",
@@ -162,7 +186,10 @@ class DataProcessingService:
             processed_count = 0
             
             for doc in all_docs:
-                if doc.get('sentiment') and doc.get('detected_weapons') is not None:
+                # Check if document has both sentiment and weapons fields populated
+                if (doc.get('sentiment') is not None and 
+                    doc.get('detected_weapons') is not None and
+                    doc.get('weapon_count') is not None):
                     processed_count += 1
             
             if processed_count == total_count:

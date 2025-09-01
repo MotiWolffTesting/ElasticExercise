@@ -102,7 +102,7 @@ class ElasticSearchService:
             logger.error(f"Error bulk indexing documents: {e}")
             return False
         
-    async def update_document_sentiment(self, doc_id: str, sentiment: int) -> bool:
+    async def update_document_sentiment(self, doc_id: str, sentiment: str) -> bool:
         "Update document sentiment"
         try:
             response = self.client.update(
@@ -138,7 +138,7 @@ class ElasticSearchService:
             return False
         
     async def delete_irrelevant_documents(self) -> int:
-        "Delete documents that are not antisemistic, have no weapons and neutral sentiment"
+        "Delete documents that are not antisemitic, have no weapons and neutral sentiment"
         try:
             query = {
                 "query": {
@@ -152,12 +152,11 @@ class ElasticSearchService:
                 }
             }
             
-            # delete the index
+            # Delete the documents matching the query
             response = self.client.delete_by_query(
                 index=self.index_name,
                 body=query
             )
-            
             
             deleted_count = response.get('deleted', 0)
             logger.info(f"Deleted {deleted_count} irrelevant documents")
@@ -222,10 +221,16 @@ class ElasticSearchService:
             response = self.client.search(
                 index=self.index_name,
                 body={"query": {"match_all": {}}},
-                size=1000
+                size=10000  # Increase size to get all documents
             )
             
-            return [hit['_source'] for hit in response['hits']['hits']]
+            documents = []
+            for hit in response['hits']['hits']:
+                doc = hit['_source'].copy()
+                doc['_id'] = hit['_id']  # Include the document ID
+                documents.append(doc)
+            
+            return documents
             
         except Exception as e:
             logger.error(f"Error getting all documents: {e}")

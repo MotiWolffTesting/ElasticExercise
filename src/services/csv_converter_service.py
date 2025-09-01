@@ -24,16 +24,29 @@ class CSVConverterService:
                     # Parse the date string to ISO format
                     date_str = row.get('CreateDate', '')
                     try:
-                        # Handle the date format: "2020-02-15 17:57:21+00:00"
                         if date_str:
-                            # Remove timezone info and parse
-                            date_str_clean = date_str.split('+')[0].strip()
-                            parsed_date = datetime.strptime(date_str_clean, "%Y-%m-%d %H:%M:%S")
+                            # Handle different date formats
+                            if '+00:00' in date_str:
+                                # Format: "2020-02-15 17:57:21+00:00"
+                                date_str_clean = date_str.split('+')[0].strip()
+                                parsed_date = datetime.strptime(date_str_clean, "%Y-%m-%d %H:%M:%S")
+                            elif 'Mon Jan' in date_str or 'Sat Jan' in date_str:
+                                # Format: "Mon Jan 04 10:16:31 -0500 2021"
+                                try:
+                                    parsed_date = datetime.strptime(date_str, "%a %b %d %H:%M:%S %z %Y")
+                                except ValueError:
+                                    # Try without timezone
+                                    date_str_clean = date_str.split(' -')[0] + ' ' + date_str.split(' ')[-1]
+                                    parsed_date = datetime.strptime(date_str_clean, "%a %b %d %H:%M:%S %Y")
+                            else:
+                                # Try standard format
+                                parsed_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                            
                             iso_date = parsed_date.isoformat()
                         else:
                             iso_date = datetime.now().isoformat()
-                    except ValueError:
-                        logger.warning(f"Could not parse date: {date_str}, using current time")
+                    except ValueError as e:
+                        logger.warning(f"Could not parse date: {date_str}, using current time. Error: {e}")
                         iso_date = datetime.now().isoformat()
                     
                     doc = {
