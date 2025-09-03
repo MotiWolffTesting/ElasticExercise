@@ -107,4 +107,17 @@ class WeaponsService:
         "Get the current list of weapon keywords"
         return self.weapon_keywords.copy()
 
+    async def detect_weapons_via_es(self, es_service, text: str) -> List[str]:
+        """Detect weapons using Elasticsearch analyzer via provided ES service.
+
+        es_service is expected to expose `detect_weapons_in_text(text: str) -> List[str]`.
+        """
+        if not text:
+            return []
+        try:
+            return await es_service.detect_weapons_in_text(text)
+        except Exception:
+            # Fallback to local detection if ES call fails
+            return self.detect_weapons(text)
+
         

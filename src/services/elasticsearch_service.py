@@ -5,6 +5,7 @@ import logging
 
 from ..config.settings import settings
 from ..models.document import MaliciousDocument
+from .weapons import WeaponsService
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ class ElasticSearchService:
             ssl_show_warn=False
         )
         self.index_name = settings.ELASTICSEARCH_INDEX
+        # Reuse the existing weapons list source
+        self._weapons_service = WeaponsService()
         
     async def create_index(self) -> bool:
         "Create the malicious document index with mapping"
@@ -244,3 +247,67 @@ class ElasticSearchService:
         except Exception as e:
             logger.error(f"Error getting document count: {e}")
             return 0
+
+    async def detect_weapons_in_text(self, text: str) -> List[str]:
+        """Tokenize text with ES analyzer and detect weapons using the same tokenization.
+
+        - Uses the index's default analyzer via _analyze (standard by default)
+        - Matches single-word weapons against produced tokens (case-insensitive)
+        - Matches multi-word weapons by checking ordered token sequences
+        """
+        try:
+            if not text:
+                return []
+
+            # Analyze the text using Elasticsearch analyzer to mirror index tokenization
+            analyze_body = {
+                "analyzer": "standard",
+                "text": text
+            }
+            analyze_response = self.client.indices.analyze(body=analyze_body)
+            tokens = [t.get("token", "").lower() for t in analyze_response.get("tokens", []) if t.get("token")]
+
+            if not tokens:
+                return []
+
+            detected: List[str] = []
+            weapons = self._weapons_service.get_weapon_keywords()
+
+            # Build a quick lookup set for single-token matches
+            token_set = set(tokens)
+
+            for weapon in weapons:
+                w = weapon.strip()
+                if not w:
+                    continue
+
+                # Multi-word weapon phrase: verify ordered sequence of tokens exists
+                if " " in w:
+                    phrase_tokens = [p for p in w.lower().split() if p]
+                    if len(phrase_tokens) == 0:
+                        continue
+                    # Sliding window search over tokens
+                    window = len(phrase_tokens)
+                    found_phrase = False
+                    for i in range(0, max(0, len(tokens) - window + 1)):
+                        if tokens[i:i+window] == phrase_tokens:
+                            found_phrase = True
+                            break
+                    if found_phrase:
+                        detected.append(weapon)
+                else:
+                    # Single-word: match if present as a token
+                    if w.lower() in token_set:
+                        detected.append(weapon)
+
+            # De-duplicate while preserving input order
+            seen = set()
+            unique_detected = []
+            for d in detected:
+                if d not in seen:
+                    unique_detected.append(d)
+                    seen.add(d)
+            return unique_detected
+        except Exception as e:
+            logger.error(f"Error detecting weapons via Elasticsearch analyze: {e}")
+            return []
