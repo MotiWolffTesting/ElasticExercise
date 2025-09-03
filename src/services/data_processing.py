@@ -139,7 +139,8 @@ class DataProcessingService:
                     doc_id = doc_data.get('_id')
                     text = doc_data.get('text', '')
                     if text and doc_id:
-                        weapons = self.weapon_service.detect_weapons(text)
+                        # Use ES-backed detection via WeaponsService for single ownership
+                        weapons = await self.weapon_service.detect_weapons_via_es(self.es_service, text)
                         await self.es_service.update_document_weapons(doc_id, weapons)
                 except Exception as e:
                     logger.error(f"Error updating weapons for document {doc_id}: {e}")
